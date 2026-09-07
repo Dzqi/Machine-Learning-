@@ -1,0 +1,132 @@
+common:
+  dirmodel: models
+  dirapply: validation
+  dirplots: plots
+  dirtree: trees
+  dirhist: histograms
+  #dirinput_bias: /data/tpcml/data_20200518/bias
+  #dirinput_nobias: /data/tpcml/data_20200518/nobias
+# OLD|   dirinput_bias: /mnt/data/dsekihat/data/tpcml/data_20210414/noDistortions
+# OLD|   dirinput_nobias: /mnt/data/dsekihat/data/tpcml/data_20210414/noDistortions
+  dirinput_bias: /PATH/KE/DATA/ANDA
+  dirinput_nobias: /PATH/KE/DATA/ANDA
+  train_bias: true
+  validation_bias: true
+  apply_bias: false
+  nd_val_events: 1000 # Number of events for validation (random events for nd_validation)
+  nd_val_partition: random # Whether the validator uses only the events from given partition
+                           # 'random' is for choosing events randomly
+  pdf_map_var: flucSC
+  pdf_map_mean_id: 0
+  grid_phi: 180
+  grid_z: 33
+  grid_r: 33
+  z_range: [0, 251] # train for distortions with min <= z < max
+  opt_train: [1, 1] # first position = meanSC, second = SCfluctuations
+  opt_predout: [1, 0, 0] # R, Rphi, z output distortion predictions
+  opt_usederivative: [1, 0, 0] # use derivatives for mean corrections dr, drphi, dz
+  nameopt_predout: [R, RPhi, Z] # R, RPhi, Z output distortion predictions
+  maxrandomfiles: 1000 # this is the total number of random events generated
+  range_rnd_index_train: [0, 750] # min and max index of random SC configurations for training
+  range_rnd_index_nd_val: [600, 999] # min and max index of random SC configurations for nd validation
+  range_mean_index: [0, 44] # min and max index of mean SC configurations
+  rnd_augment: false # use rnd-rnd augmentation instead of rnd-mean. Only used for model training
+  num_fft_idcs: 200 # number of 1D IDC values used for FFT, should correspond to ion drift time
+  num_fourier_coeffs_train: 40 # number of Fourier coefficients to take from the 1D IDC train input
+  num_fourier_coeffs_apply: 40 # number of Fourier coefficients to take from the 1D IDC apply input
+
+# OLD| xgboost:
+# OLD|   active: true
+xgboost:
+  active: false  # [BARU] jalur struktural memakai bagian dnn
+  train_events: [200000]
+  xgbtype: RF  # Type of XGBoost regressor. "XGB", "RF" or "NN"
+  validation_events: [100]
+  apply_events: [400]
+  downsample: true
+  downsample_npoints: 10 #(NN)10 is better than 100
+  plot_train: false
+  train_plot_npoints: 10
+  apply_tree: false # Create a TTree with all the apply results (a relatively short way of checking the predictions).
+  cache_train: false
+  cache_val: true # Take validation data from cache data (available only for NN and when train_events+val_events<=cache_events).
+  cache_events: 250000
+  cache_file_size: 5000 # number of events, adjust to your RAM
+  dircache: cache
+  params:
+    n_estimators: 100 # (RF) 850, 100 is better than 500
+    max_depth: 15
+    learning_rate: 0.1 # (RF) 1 is better than 0.1 and 3.0 (XGB)0.1 is better than 1.0
+    objective: "reg:squarederror"
+    booster: "gbtree"
+    tree_method: "hist"
+    n_gpus: 0
+    n_jobs: 10
+    gamma: 0
+    min_child_weight: 1 #(RF)3
+    max_delta_step: 0
+    subsample: 0.8
+    colsample_bytree: 1 #(RF)0.8
+    colsample_bylevel: 1
+    colsample_bynode: 0.8
+    reg_alpha: 0
+    reg_lambda: 0.00005
+    scale_pos_weight: 1
+    base_score: 0.5
+  nn_params:
+    optimizer: "rmsprop"
+    loss: "mse"
+    metrics: "mse"
+    hidden_activation: "relu" # Activation function for hidden layer.
+    n_hidden_layers: 10 # Number of hidden layers.
+    n_neurons: 1 # (n_neurons*inputs.size) neurons in hidden layer.
+    dropout_rate: 0.0 # Hidden layer dropout rate. 0 means no dropout.
+    do_normalization: true # Whether or not to normalize the input for the neural network.
+    batch_size: 30
+    epochs: 30
+
+corr:
+  active: false
+
+# OLD| dnn:
+# OLD|   active: false
+dnn:
+  active: true   # [BARU] HodgeNet struktural
+  train_events: [5000] # 5000, 18000
+  validation_events: [600] # 500, 1800
+  apply_events: [1400] # 7000, 7000
+  use_scaler: false
+  filters: 4
+  pool_type: "max" # max, avg, conv
+  depth: 4
+  batch_normalization: false
+  dropout: 0.0
+  batch_size: 27
+  shuffle: false
+  epochs: 20
+  lossfun: mse
+  metrics: mse
+# OLD|   adamlr: 0.001000
+  adamlr: 0.001000
+  # --- [BARU v3] jalur struktural TDL+PINN ---
+  # `epochs` di atas (kunci ASLI, default 20) = loop EPOCH SEJATI kita:
+  # satu epoch = satu pass seluruh dataset event (naikkan utk latih lebih lama)
+  synthetic: false           # false = data riil dari dirinput_*; true = create-data
+  synthetic_events: 2        # jumlah event bila synthetic: true
+  synthetic_mode: mc         # mc = MC statistik (Pers.1 ALICE); blobs = v1
+  mc_pileup: 3000            # rata-rata event pile-up (Poisson); paper ~10000
+  mc_mult_rel_sigma: 0.3     # fluktuasi relatif multiplisitas
+  mc_charge_rel_sigma: 0.5   # fluktuasi relatif muatan-per-track
+  hodge_hidden: 32           # lebar jaringan (tuning: 64-128)
+  hodge_nblocks: 4           # kedalaman jaringan (tuning: 6-8)
+  lam_data: 1.0              # bobot suku data (loss)
+  lam_pde: 0.1               # bobot suku Poisson/fisika (tuning: sweep 0..1)
+  residual_mode: structural_hodge  # ablasi: fd_soft (soft ala Gao)
+  network: hodge_unet        # v4 Hodge-U-Net; ablasi arsitektur v3: hodge_flat
+  unet_levels: 3             # level encoder-decoder; 180/33/33 -> 90/17/17 -> 45/9/9
+  unet_blocks: 1             # HodgeBlock per level
+  unet_channel_growth: 2     # pelebaran kanal per level (ala U-Net asli)
+  omega_tau: 0.32   # PLACEHOLDER - verifikasi vs O2
+  e0_vcm: 400.0     # PLACEHOLDER - verifikasi vs O2
+  make_plots: true           # PNG matplotlib (kurva belajar per-epoch + peta)
+  save_root: true            # keluaran .root via uproot (tanpa ROOT penuh)
